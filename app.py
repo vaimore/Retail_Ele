@@ -1,61 +1,36 @@
 import streamlit as st
-import pandas as pd
 import joblib
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 
 # Load the pre-trained models
-ridge_best_model = joblib.load('ridge_best_model.pkl')
-ridge_best_ped_model = joblib.load('ridge_best_ped_model.pkl')
+ped_model = joblib.load('ridge_best_ped_model.pkl')
+revenue_model = joblib.load('ridge_best_model.pkl')
 
-# Function to make predictions for the Revenue model
-def predict_revenue(input_data):
-    # Scale the input data
-    scaler = StandardScaler()
-    input_scaled = scaler.fit_transform([input_data])
-    
-    # Predict using the Ridge model
-    prediction = ridge_best_model.predict(input_scaled)
-    return prediction[0]
+# Streamlit Interface for the client
+def predict_ped_and_revenue(old_price, new_price, old_qty, new_qty):
+    # Prepare the input data for prediction
+    price_change = ((new_price - old_price) / old_price) * 100
+    quantity_change = ((new_qty - old_qty) / old_qty) * 100
+    price_to_quantity_ratio = old_price / old_qty
+    price_quantity_interaction = old_price * old_qty
+    input_data = np.array([[price_change, quantity_change, price_to_quantity_ratio, price_quantity_interaction]])
 
-# Function to make predictions for the PED model
-def predict_ped(input_data):
-    # Scale the input data
-    scaler = StandardScaler()
-    input_scaled = scaler.fit_transform([input_data])
-    
-    # Predict using the PED model
-    prediction = ridge_best_ped_model.predict(input_scaled)
-    return prediction[0]
+    # Predict PED and Revenue Change
+    predicted_ped = ped_model.predict(input_data)[0]
+    predicted_revenue_change = revenue_model.predict(input_data)[0]
 
-# Streamlit app layout
-st.title("Revenue and PED Prediction App")
+    # Display results
+    st.write(f"Predicted PED: {predicted_ped:.2f}")
+    st.write(f"Predicted Revenue Change: {predicted_revenue_change:.2f}")
 
-st.sidebar.header("Input Features")
+# Streamlit app
+st.title("Price Elasticity of Demand (PED) and Revenue Forecast")
+st.write("Enter old price, new price, old quantity, and new quantity to calculate PED and revenue change.")
 
-# Create sliders or input fields for users to input the data
-old_price = st.sidebar.number_input("Old Price", min_value=0, max_value=1000, value=100)
-new_price = st.sidebar.number_input("New Price", min_value=0, max_value=1000, value=90)
-old_quantity = st.sidebar.number_input("Old Quantity", min_value=0, max_value=1000, value=300)
-new_quantity = st.sidebar.number_input("New Quantity", min_value=0, max_value=1000, value=350)
+old_price = st.number_input("Enter Old Price", min_value=1)
+new_price = st.number_input("Enter New Price", min_value=1)
+old_qty = st.number_input("Enter Old Quantity", min_value=1)
+new_qty = st.number_input("Enter New Quantity", min_value=1)
 
-# Calculate the feature values based on the input
-price_change = ((new_price - old_price) / old_price) * 100
-quantity_change = ((new_quantity - old_quantity) / old_quantity) * 100
-price_to_quantity_ratio = old_price / old_quantity
-price_quantity_interaction = old_price * old_quantity
-
-# Input data for prediction
-input_data = [price_change, quantity_change, price_to_quantity_ratio, price_quantity_interaction]
-
-# Prediction buttons for Revenue and PED
-if st.sidebar.button('Predict Revenue Change'):
-    revenue_prediction = predict_revenue(input_data)
-    st.subheader("Predicted Revenue Change")
-    st.write(f"The predicted revenue change is: {revenue_prediction:.2f}")
-
-if st.sidebar.button('Predict Price Elasticity of Demand (PED)'):
-    ped_prediction = predict_ped(input_data)
-    st.subheader("Predicted Price Elasticity of Demand (PED)")
-    st.write(f"The predicted PED is: {ped_prediction:.2f}")
-
+if st.button('Calculate'):
+    predict_ped_and_revenue(old_price, new_price, old_qty, new_qty)
